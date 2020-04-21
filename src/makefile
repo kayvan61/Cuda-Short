@@ -2,7 +2,7 @@
 GCC=g++
 CXX_FLAGS=-Wall
 
-all: graph.o main.o
+all: main.o
 	$(GCC) $(CXX_FLAGS) $^ -o graph
 
 %.o: %.cpp
