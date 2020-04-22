@@ -1,3 +1,6 @@
+#ifndef LOCK_HPP
+#define LOCK_HPP
+
 struct Lock{
   int *mutex;
   Lock(void){
@@ -20,3 +23,5 @@ struct Lock{
     atomicExch(mutex, 0);
   }
 };
+
+#endif
