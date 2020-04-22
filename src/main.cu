@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include "CudaLock.hpp"
 
+#define BLOCK_SIZE 512
+
 __global__ void relax(int* U, int* F, int* d, int gSize, int* adjMat, Lock lock);
 __global__ void min(int*, int*, int*, int*, int, int);
 __global__ void update(int*, int*, int*, int*, int);
@@ -16,7 +18,7 @@ int main() {
 
   int*  adjMat;
   int*  shortestOut;
-  int   gSize = 5;
+  int   gSize = 7;
   int   startingNode = 0;
   int   del;
   
@@ -111,13 +113,15 @@ int main() {
     
     cudaMemcpy(&del, _d_delta, sizeof(int), cudaMemcpyDeviceToHost);
     
-    cudaMemcpy(tempDebug, _d_estimates, sizeof(int) * gSize, cudaMemcpyDeviceToHost);
-    for(int i = 0; i < gSize; i++){
-      printf("%d ", tempDebug[i]);
-    }
-    printf("\n");
     fflush(stdout);
   } while(del != 0xFFFFFFFF);
+
+  cudaMemcpy(shortestOut, _d_estimates, sizeof(int) * gSize, cudaMemcpyDeviceToHost);
+  for(int i = 0; i < gSize; i++){
+    printf("shotest path from %d to %d is %d long.\n", startingNode, i, shortestOut[i]);
+  }
+  printf("\n");
+
 
   
   cudaFree(_d_minTemp1);
@@ -128,6 +132,9 @@ int main() {
   cudaFree(_d_estimates);
   cudaFree(_d_minOutEdge);
   cudaFree(_d_delta);
+
+  free(adjMat);
+  free(shortestOut);
 
   
 }
@@ -140,12 +147,17 @@ __global__ void findAllMins(int* adjMat, int* outVec, int gSize) {
     
   if(globalThreadId < gSize) {
     for(int i = 0; i < gSize; i++) {
-      if(adjMat[ind + i] < min || min == -1) {
+      if((adjMat[ind + i] < min && adjMat[ind + i] >= 0) || min <= -1) {
 	min = adjMat[ind + i];
       }
     }
-
-    outVec[globalThreadId] = min;
+    if(min >= 0) {
+      outVec[globalThreadId] = min;
+    }
+    else {
+      outVec[globalThreadId] = -1;
+    }
+    printf("%d min out is %d\n", globalThreadId, outVec[globalThreadId]);
   }
 }
 
@@ -171,7 +183,12 @@ __global__ void relax(int* U, int* F, int* d, int gSize, int* adjMat, Lock lock)
 
 	  int min   = d[i];
 	  int other = d[globalThreadId] + adjMat[globalThreadId * gSize + i];
-	  d[i] = min < other ? min : other;
+	  if(other >= 0 && min >= 0) {
+	    d[i] = min < other ? min : other;
+	  }
+	  else {
+	    d[i] = -1;
+	  }
 	  
 	  printf("i: %d, globalThreadId: %d UNLOCK\n", i, globalThreadId);
 	  
@@ -195,25 +212,31 @@ __global__ void min(int* U, int* d, int* outDel, int* minOutEdges, int gSize, in
     if(pos2 < gSize) {
       val2 = minOutEdges[pos2] + (useD ? d[pos2] : 0);;
       if(!useD) {
-	if(val1 > val2) {
+	if(val1 > val2 && val2 >= 0 && minOutEdges[pos2] >= 0) {
 	  outDel[globalThreadId] = val2;	 
 	}
-	else {
+	else if(val1 >= 0 && minOutEdges[pos1] >= 0){
 	  outDel[globalThreadId] = val1;
+	}
+	else {
+	  outDel[globalThreadId] = 0xFFFFFFFF;
 	}
       }
       else if(U[pos1] && U[pos2]) {
-	if(val1 > val2) {
+	if(val1 > val2 && val2 >= 0 && minOutEdges[pos2] >= 0) {
 	  outDel[globalThreadId] = val2;
 	}
-	else {
+	else if(val1 >= 0 && minOutEdges[pos1] >= 0){
 	  outDel[globalThreadId] = val1;
 	}
+	else {
+	  outDel[globalThreadId] = 0xFFFFFFFF;
+	}
       }
-      else if(U[pos1]) {
+      else if(U[pos1] && val1 >= 0 && minOutEdges[pos1] >= 0) {
 	outDel[globalThreadId] = val1;
       }
-      else if(U[pos2]) {
+      else if(U[pos2] && val2 >= 0 && minOutEdges[pos2] >= 0) {
 	outDel[globalThreadId] = val2;
       }
       else {
@@ -221,7 +244,12 @@ __global__ void min(int* U, int* d, int* outDel, int* minOutEdges, int gSize, in
       }
     }
     else {
-      outDel[globalThreadId] = val1;
+      if(outDel[globalThreadId] >= 0 && minOutEdges[pos1] >= 0) {
+	outDel[globalThreadId] = val1;
+      }
+      else {
+	outDel[globalThreadId] = 0xFFFFFFFF;
+      }
     }
   }
 }
@@ -236,6 +264,8 @@ __global__ void min(int* U, int* d, int* outDel, int* minOutEdges, int gSize, in
 __global__ void update(int* U, int* F, int* d, int* del, int gSize) {
   int globalThreadId = blockIdx.x * blockDim.x + threadIdx.x;
 
+  printf("%d has del: %d\n", globalThreadId, del[0]);
+  
   if (globalThreadId < gSize) {
     F[globalThreadId] = 0;
     if(U[globalThreadId] && d[globalThreadId] <= del[0]) {
@@ -268,37 +298,22 @@ __global__ void init(int* U, int* F, int* d, int startNode, int gSize) {
 }
 
 int* genTestAdjMat() {
-  int* ret = (int*)malloc(25 * sizeof(int));
+  int temp[49] = {0, 2, 0, 1, 0, 0, 0,
+		  0, 0, 0, 3, 10, 0, 0,
+		  4, 0, 0, 0, 0, 5, 0,
+		  0, 0, 2, 0, 2, 8, 4,
+		  0, 0, 0, 0, 0, 0, 6,
+		  0, 0, 0, 0, 0, 0, 0,
+		  0, 0, 0, 0, 0, 1, 0};
+  for(int i = 0; i < 49; i++) {
+    if(temp[i] == 0) {
+      temp[i] = -1;
+    }
+  }
+  
+  int* ret = (int*)malloc(49 * sizeof(int));
 
-  ret[0] = 2;
-  ret[1] = 1;
-  ret[2] = 0;
-  ret[3] = 1;
-  ret[4] = 2;
-
-  ret[5] = 7;
-  ret[6] = 6;
-  ret[7] = 5;
-  ret[8] = 6;
-  ret[9] = 1;
-
-  ret[10] = 10;
-  ret[11] = 10;
-  ret[12] = 10;
-  ret[13] = 10;
-  ret[14] = 2;
-
-  ret[15] = 11;
-  ret[16] = 3;
-  ret[17] = 11;
-  ret[18] = 10;
-  ret[19] = 5;
-
-  ret[20] = 6;
-  ret[21] = 4;
-  ret[22] = 6;
-  ret[23] = 7;
-  ret[24] = 8;
-
+  memcpy(ret, temp, sizeof(int) * 49);
+  
   return ret;
 }
