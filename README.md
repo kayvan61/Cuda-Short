@@ -25,12 +25,14 @@ To run a demo with an adjacency matrix from a file:
 
 The program assumes adjacency matricies will be in the format
 
-```n
+```
+n
 s
 <row 1 (data assumed to be n x n)>
 <row 2>
 <...  >
-<row n>```
+<row n>
+```
 
 # Requirements
 
