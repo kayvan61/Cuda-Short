@@ -9,6 +9,12 @@
 #include "CPU_short.hpp"
 #include "timingTests.hpp"
 #endif
+#ifdef FUNC_TEST
+#include "CPU_short.hpp"
+#include "funcTests.hpp"
+#endif
+
+
 
 int* genTestAdjMat(int*);
 void runTimingTest();
@@ -22,6 +28,11 @@ int main() {
   return 0;
 #endif 
 
+#ifdef FUNC_TEST
+  runFuncTests();
+  return 0;
+#endif
+  
   int*  adjMat;
   int*  shortestOut;
   int   gSize;

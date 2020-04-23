@@ -1,4 +1,3 @@
-
 #define TIMING_MAX_SIZE  8192
 #define TIMING_STEP_SIZE 512
 
@@ -86,6 +85,13 @@ void runTimingTest() {
     handlerError(cudaEventElapsedTime(&gpu_time, start, stop));    
     
     free(shortestOut);
+    cudaFree(_d_adjMat);
+    cudaFree(_d_outVec);
+    cudaFree(_d_unvisited);
+    cudaFree(_d_frontier);
+    cudaFree(_d_estimates);
+    cudaFree(_d_minOutEdge);
+    cudaFree(_d_delta);
 
     handlerError(cudaDeviceSynchronize());
     handlerError(cudaEventRecord(mem_stop, 0));
@@ -101,13 +107,6 @@ void runTimingTest() {
   }
 
   free(adjMat);
-  cudaFree(_d_adjMat);
-  cudaFree(_d_outVec);
-  cudaFree(_d_unvisited);
-  cudaFree(_d_frontier);
-  cudaFree(_d_estimates);
-  cudaFree(_d_minOutEdge);
-  cudaFree(_d_delta);
 }
 
 void runCPUTimingTest() {

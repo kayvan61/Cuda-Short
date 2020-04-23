@@ -1,5 +1,6 @@
 #include <iostream>
 #include <stdio.h>
+#include <climits>
 #include "CudaLock.hpp"
 
 #define BLOCK_SIZE 512
@@ -23,15 +24,15 @@ __global__ void findAllMins(int* adjMat, int* outVec, int gSize) {
     
   if(globalThreadId < gSize) {
     for(int i = 0; i < gSize; i++) {
-      if((adjMat[ind + i] < min && adjMat[ind + i] >= 0) || min <= -1) {
+      if((adjMat[ind + i] < min && adjMat[ind + i] > 0) || min <= -1) {
 	min = adjMat[ind + i];
       }
     }
-    if(min >= 0) {
+    if(min > 0) {
       outVec[globalThreadId] = min;
     }
     else {
-      outVec[globalThreadId] = -1;
+      outVec[globalThreadId] = INT_MAX;
     }    
   }
 }
@@ -51,16 +52,19 @@ __global__ void relax(int* U, int* F, int* d, int gSize, int* adjMat, Lock lock)
   if (globalThreadId < gSize) {
     if (F[globalThreadId]) {
       for (int i = 0; i < gSize; i++) {
-	if(adjMat[globalThreadId*gSize + i] != -1) {
+	if(adjMat[globalThreadId*gSize + i] && i != globalThreadId) {
 	  lock.lock(globalThreadId);
 
 	  int min   = d[i];
 	  int other = d[globalThreadId] + adjMat[globalThreadId * gSize + i];
-	  if(other >= 0 && min >= 0) {
+	  if(other > 0) {
 	    d[i] = min < other ? min : other;
 	  }
+	  else if(min >= 0) {
+	    d[i] = min;
+	  }
 	  else {
-	    d[i] = -1;
+	    d[i] = INT_MAX;
 	  }
 	  
 	  lock.unlock();
@@ -81,43 +85,43 @@ __global__ void min(int* U, int* d, int* outDel, int* minOutEdges, int gSize, in
     if(pos2 < gSize) {
       val2 = minOutEdges[pos2] + (useD ? d[pos2] : 0);;
       if(!useD) {
-	if(val1 > val2 && val2 >= 0 && minOutEdges[pos2] >= 0) {
+	if(val1 > val2 && val2 > 0) {
 	  outDel[globalThreadId] = val2;	 
 	}
-	else if(val1 >= 0 && minOutEdges[pos1] >= 0){
+	else if(val1 > 0){
 	  outDel[globalThreadId] = val1;
 	}
 	else {
-	  outDel[globalThreadId] = 0xFFFFFFFF;
+	  outDel[globalThreadId] = INT_MAX;
 	}
       }
       else if(U[pos1] && U[pos2]) {
-	if(val1 > val2 && val2 >= 0 && minOutEdges[pos2] >= 0) {
+	if(val1 > val2 && val2 > 0) {
 	  outDel[globalThreadId] = val2;
 	}
-	else if(val1 >= 0 && minOutEdges[pos1] >= 0){
+	else if(val1 > 0){
 	  outDel[globalThreadId] = val1;
 	}
 	else {
-	  outDel[globalThreadId] = 0xFFFFFFFF;
+	  outDel[globalThreadId] = INT_MAX;
 	}
       }
-      else if(U[pos1] && val1 >= 0 && minOutEdges[pos1] >= 0) {
+      else if(U[pos1] && val1 > 0) {
 	outDel[globalThreadId] = val1;
       }
-      else if(U[pos2] && val2 >= 0 && minOutEdges[pos2] >= 0) {
+      else if(U[pos2] && val2 > 0) {
 	outDel[globalThreadId] = val2;
       }
       else {
-	outDel[globalThreadId] = 0xFFFFFFFF;
+	outDel[globalThreadId] = INT_MAX;
       }
     }
     else {
-      if(outDel[globalThreadId] >= 0 && minOutEdges[pos1] >= 0) {
+      if(outDel[globalThreadId] > 0 && minOutEdges[pos1] > 0) {
 	outDel[globalThreadId] = val1;
       }
       else {
-	outDel[globalThreadId] = 0xFFFFFFFF;
+	outDel[globalThreadId] = INT_MAX;
       }
     }
   }
@@ -153,7 +157,7 @@ __global__ void init(int* U, int* F, int* d, int startNode, int gSize) {
   if (globalThreadId < gSize) {
     U[globalThreadId] = 1;
     F[globalThreadId] = 0;
-    d[globalThreadId] = 0x7FFFFFFF;
+    d[globalThreadId] = INT_MAX;
   }
 
   if(globalThreadId == 0) {
@@ -173,9 +177,10 @@ void doShortest(int* adjMat, int* shortestOut, int gSize, int startingNode,
 		int*  _d_minOutEdge) {
   int   del;
   Lock relaxLock;
+  int numBlocks  = (gSize / BLOCK_SIZE) + 1;
   
   // O(n) but total algo is larger than O(n) so who cares
-  findAllMins<<<1, gSize>>>(_d_adjMat, _d_minOutEdge, gSize);
+  findAllMins<<<numBlocks, BLOCK_SIZE>>>(_d_adjMat, _d_minOutEdge, gSize);
 
   /*
    * pseudo-code algo
@@ -195,8 +200,7 @@ void doShortest(int* adjMat, int* shortestOut, int gSize, int startingNode,
   
   cudaMalloc((void**) &_d_minTemp1 , sizeof(int) * gSize);
   
-  init<<<1, gSize>>>(_d_unvisited, _d_frontier, _d_estimates, startingNode, gSize);
-  int numBlocks  = (gSize / BLOCK_SIZE) + 1;
+  init<<<numBlocks, BLOCK_SIZE>>>(_d_unvisited, _d_frontier, _d_estimates, startingNode, gSize);
   do {
     dFlag = 1;
     curSize = gSize;
@@ -223,11 +227,11 @@ void doShortest(int* adjMat, int* shortestOut, int gSize, int startingNode,
     cudaMemcpy(&del, _d_delta, sizeof(int), cudaMemcpyDeviceToHost);
     
     fflush(stdout);
-  } while(del != 0xFFFFFFFF);
+  } while(del != INT_MAX);
 
   cudaMemcpy(shortestOut, _d_estimates, sizeof(int) * gSize, cudaMemcpyDeviceToHost);
   
-#ifndef TIMING
+#ifndef NO_PRINT
   for(int i = 0; i < gSize; i++){
     printf("shotest path from %d to %d is %d long.\n", startingNode, i, shortestOut[i]);
   }
