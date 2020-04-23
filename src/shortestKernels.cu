@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include "CudaLock.hpp"
 
+#define BLOCK_SIZE 512
+
 /* 
  * Definitions:
  * d[i]   = shortest path so far from source to i
@@ -159,4 +161,78 @@ __global__ void init(int* U, int* F, int* d, int startNode, int gSize) {
     U[globalThreadId] = 0;
     F[globalThreadId] = 1;
   }
+}
+
+void doShortest(int* adjMat, int* shortestOut, int gSize, int startingNode,
+		int*  _d_adjMat,
+		int*  _d_outVec,
+		int*  _d_unvisited,
+		int*  _d_frontier,
+		int*  _d_estimates,
+		int*  _d_delta,
+		int*  _d_minOutEdge) {
+  int   del;
+  Lock relaxLock;
+  
+  // O(n) but total algo is larger than O(n) so who cares
+  findAllMins<<<1, gSize>>>(_d_adjMat, _d_minOutEdge, gSize);
+
+  /*
+   * pseudo-code algo
+   *
+   * init<<<>>>(U, F, d)
+   * while(del != -1) 
+   *   relax<<<>>>(U, F, d)
+   *   del = min<<<>>>(U, d)
+   *   update<<<>>>(U, F, d, del)
+   */
+
+  int  curSize = gSize;
+  int  dFlag;
+  int* _d_minTemp1;
+  int* _d_minTemp2;
+  int* tempDebug = (int*) malloc(sizeof(int) * gSize);
+  
+  cudaMalloc((void**) &_d_minTemp1 , sizeof(int) * gSize);
+  
+  init<<<1, gSize>>>(_d_unvisited, _d_frontier, _d_estimates, startingNode, gSize);
+  int numBlocks  = (gSize / BLOCK_SIZE) + 1;
+  do {
+    dFlag = 1;
+    curSize = gSize;
+    cudaMemcpy(_d_minTemp1,   _d_minOutEdge, sizeof(int) * gSize, cudaMemcpyDeviceToDevice);
+    
+    relax<<<gSize, 1>>>(_d_unvisited, _d_frontier, _d_estimates, gSize, _d_adjMat, relaxLock);
+    do {
+      min<<<numBlocks, BLOCK_SIZE>>>(_d_unvisited, _d_estimates, _d_delta, _d_minTemp1, curSize, dFlag);
+      _d_minTemp2 = _d_minTemp1;
+      _d_minTemp1 = _d_delta;
+      _d_delta    = _d_minTemp2;
+
+      curSize /= 2;
+      dFlag = 0;
+    } while (curSize > 0);
+    
+    _d_minTemp2 = _d_minTemp1;
+    _d_minTemp1 = _d_delta;
+    _d_delta    = _d_minTemp2;
+
+    
+    update<<<numBlocks, BLOCK_SIZE>>>(_d_unvisited, _d_frontier, _d_estimates, _d_delta, gSize);
+    
+    cudaMemcpy(&del, _d_delta, sizeof(int), cudaMemcpyDeviceToHost);
+    
+    fflush(stdout);
+  } while(del != 0xFFFFFFFF);
+
+  cudaMemcpy(shortestOut, _d_estimates, sizeof(int) * gSize, cudaMemcpyDeviceToHost);
+  
+#ifndef TIMING
+  for(int i = 0; i < gSize; i++){
+    printf("shotest path from %d to %d is %d long.\n", startingNode, i, shortestOut[i]);
+  }
+  printf("\n");
+#endif
+
+  cudaFree(_d_minTemp1);
 }
