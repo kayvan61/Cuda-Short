@@ -21,6 +21,17 @@ To run a demo with an adjacency matrix from a file:
 2. `make demo`
 3. `./demo <fileName>`
 
+# Adjacency Matrix File Format
+
+The program assumes adjacency matricies will be in the format
+
+```n
+s
+<row 1 (data assumed to be n x n)>
+<row 2>
+<...  >
+<row n>```
+
 # Requirements
 
 1. This make file assumes a cuda GPU compatible with compute_60
