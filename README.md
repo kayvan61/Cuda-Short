@@ -23,7 +23,7 @@ To run a demo with an adjacency matrix from a file:
 
 # Adjacency Matrix File Format
 
-The program assumes adjacency matricies will be in the format
+The program assumes adjacency matricies will be in the format where `n` is the number of nodes, and `s` is the source node.
 
 ```
 n
