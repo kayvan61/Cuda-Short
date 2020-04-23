@@ -1,7 +1,6 @@
 #include <iostream>
 #include <stdio.h>
 #include <climits>
-#include "CudaLock.hpp"
 
 #define BLOCK_SIZE 512
 
@@ -53,21 +52,14 @@ __global__ void relax(int* U, int* F, int* d, int gSize, int* adjMat, Lock lock)
     if (F[globalThreadId]) {
       for (int i = 0; i < gSize; i++) {
 	if(adjMat[globalThreadId*gSize + i] && i != globalThreadId) {
-	  lock.lock(globalThreadId);
-
+	  //lock.lock(globalThreadId);
+	  
 	  int min   = d[i];
-	  int other = d[globalThreadId] + adjMat[globalThreadId * gSize + i];
-	  if(other > 0) {
-	    d[i] = min < other ? min : other;
-	  }
-	  else if(min >= 0) {
-	    d[i] = min;
-	  }
-	  else {
-	    d[i] = INT_MAX;
+	  while (atomicMin(&d[i], d[globalThreadId] + adjMat[globalThreadId * gSize + i]) != min){
+	    min = d[i];
 	  }
 	  
-	  lock.unlock();
+	  //lock.unlock();
 	}
       }
     }

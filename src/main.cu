@@ -3,7 +3,6 @@
 #include <sys/time.h>
 #include <curand.h>
 #include <curand_kernel.h>
-#include "CudaLock.hpp"
 #include "shortestKernels.cu"
 #ifdef TIMING
 #include "CPU_short.hpp"

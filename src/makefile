@@ -4,13 +4,13 @@ CXX_FLAGS=-arch compute_60
 TIMING_FLAGS=-D TIMING -D NO_PRINT
 FUNC_FLAGS=-D FUNC_TEST -D NO_PRINT 
 
-demo: main.cu shortestKernels.cu CudaLock.hpp
+demo: main.cu shortestKernels.cu
 	$(GCC) $(CXX_FLAGS) $< -o $@
 
-timeTest: main.cu shortestKernels.cu CudaLock.hpp CPU_short.hpp timingTests.hpp
+timeTest: main.cu shortestKernels.cu CPU_short.hpp timingTests.hpp
 	$(GCC) $(CXX_FLAGS) $(TIMING_FLAGS) $< -o $@
 
-funcTests: main.cu shortestKernels.cu CudaLock.hpp CPU_short.hpp funcTests.hpp
+funcTests: main.cu shortestKernels.cu CPU_short.hpp funcTests.hpp
 	$(GCC) $(CXX_FLAGS) $(FUNC_FLAGS) $< -o $@
 
 %.o: %.cpp
