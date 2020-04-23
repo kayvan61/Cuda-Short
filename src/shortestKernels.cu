@@ -45,21 +45,19 @@ __global__ void findAllMins(int* adjMat, int* outVec, int gSize) {
  *       atomic_end
  *
  */
-__global__ void relax(int* U, int* F, int* d, int gSize, int* adjMat, Lock lock) {
+__global__ void relax(int* U, int* F, int* d, int gSize, int* adjMat) {
   int globalThreadId = blockIdx.x * blockDim.x + threadIdx.x;
 
   if (globalThreadId < gSize) {
     if (F[globalThreadId]) {
       for (int i = 0; i < gSize; i++) {
 	if(adjMat[globalThreadId*gSize + i] && i != globalThreadId) {
-	  //lock.lock(globalThreadId);
 	  
 	  int min   = d[i];
 	  while (atomicMin(&d[i], d[globalThreadId] + adjMat[globalThreadId * gSize + i]) != min){
 	    min = d[i];
 	  }
 	  
-	  //lock.unlock();
 	}
       }
     }
@@ -168,7 +166,6 @@ void doShortest(int* adjMat, int* shortestOut, int gSize, int startingNode,
 		int*  _d_delta,
 		int*  _d_minOutEdge) {
   int   del;
-  Lock relaxLock;
   int numBlocks  = (gSize / BLOCK_SIZE) + 1;
   
   // O(n) but total algo is larger than O(n) so who cares
@@ -198,7 +195,7 @@ void doShortest(int* adjMat, int* shortestOut, int gSize, int startingNode,
     curSize = gSize;
     cudaMemcpy(_d_minTemp1,   _d_minOutEdge, sizeof(int) * gSize, cudaMemcpyDeviceToDevice);
     
-    relax<<<gSize, 1>>>(_d_unvisited, _d_frontier, _d_estimates, gSize, _d_adjMat, relaxLock);
+    relax<<<numBlocks, BLOCK_SIZE>>>(_d_unvisited, _d_frontier, _d_estimates, gSize, _d_adjMat);
     do {
       min<<<numBlocks, BLOCK_SIZE>>>(_d_unvisited, _d_estimates, _d_delta, _d_minTemp1, curSize, dFlag);
       _d_minTemp2 = _d_minTemp1;
