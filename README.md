@@ -44,3 +44,4 @@ s
 
 1. https://www.mcs.anl.gov/~itf/dbpp/text/node35.html
 2. https://www.researchgate.net/publication/237149132_A_New_GPU-based_Approach_to_the_Shortest_Path_Problem
+3. https://link.springer.com/content/pdf/10.1007%2F978-3-642-01970-8_91.pdf

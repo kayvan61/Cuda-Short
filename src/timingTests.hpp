@@ -1,11 +1,11 @@
-#define TIMING_MAX_SIZE  8192
+#define TIMING_MAX_SIZE  100 * 1024
 #define TIMING_STEP_SIZE 512
 
 int* genRandAdjMat(int size) {
   int* ret = (int*)malloc(size * size * sizeof(int));
   srand(12345);
   for(int i = 0; i < size * size; i++) {
-    ret[i] = rand()%256 - 1;
+    ret[i] = rand()%256;
   } 
 
   return ret;
@@ -35,7 +35,7 @@ void runTimingTest() {
 
   adjMat = genRandAdjMat(TIMING_MAX_SIZE);
   
-  for(gSize = TIMING_STEP_SIZE; gSize <= TIMING_MAX_SIZE; gSize += TIMING_STEP_SIZE) {
+  for(gSize = TIMING_STEP_SIZE; gSize <= TIMING_MAX_SIZE; gSize *= 2) {
     
     shortestOut = (int*)malloc(sizeof(int) * gSize);
 
@@ -122,7 +122,7 @@ void runCPUTimingTest() {
 
   clock_t start, end;
   
-  for(int gSize = TIMING_STEP_SIZE; gSize <= TIMING_MAX_SIZE; gSize += TIMING_STEP_SIZE) {
+  for(int gSize = TIMING_STEP_SIZE; gSize <= TIMING_MAX_SIZE; gSize *= 2) {
     start = clock();
     
     CPU_Dijkstra(adjMat, 0, gSize);

@@ -19,20 +19,15 @@
 __global__ void findAllMins(int* adjMat, int* outVec, int gSize) {
   int globalThreadId = blockIdx.x * blockDim.x + threadIdx.x;
   int ind = globalThreadId * gSize;
-  int min = -1;
+  int min = INT_MAX;
     
   if(globalThreadId < gSize) {
     for(int i = 0; i < gSize; i++) {
-      if((adjMat[ind + i] < min && adjMat[ind + i] > 0) || min <= -1) {
+      if(adjMat[ind + i] < min && adjMat[ind + i] > 0) {
 	min = adjMat[ind + i];
       }
     }
-    if(min > 0) {
-      outVec[globalThreadId] = min;
-    }
-    else {
-      outVec[globalThreadId] = INT_MAX;
-    }    
+    outVec[globalThreadId] = min;
   }
 }
 
@@ -51,13 +46,8 @@ __global__ void relax(int* U, int* F, int* d, int gSize, int* adjMat) {
   if (globalThreadId < gSize) {
     if (F[globalThreadId]) {
       for (int i = 0; i < gSize; i++) {
-	if(adjMat[globalThreadId*gSize + i] && i != globalThreadId) {
-	  
-	  int min   = d[i];
-	  while (atomicMin(&d[i], d[globalThreadId] + adjMat[globalThreadId * gSize + i]) != min){
-	    min = d[i];
-	  }
-	  
+	if(adjMat[globalThreadId*gSize + i] && i != globalThreadId && U[i]) {
+	  atomicMin(&d[i], d[globalThreadId] + adjMat[globalThreadId * gSize + i]);
 	}
       }
     }
@@ -73,46 +63,33 @@ __global__ void min(int* U, int* d, int* outDel, int* minOutEdges, int gSize, in
   if(pos1 < gSize) {
     val1 = minOutEdges[pos1] + (useD ? d[pos1] : 0);
     if(pos2 < gSize) {
-      val2 = minOutEdges[pos2] + (useD ? d[pos2] : 0);;
-      if(!useD) {
-	if(val1 > val2 && val2 > 0) {
-	  outDel[globalThreadId] = val2;	 
-	}
-	else if(val1 > 0){
-	  outDel[globalThreadId] = val1;
-	}
-	else {
-	  outDel[globalThreadId] = INT_MAX;
-	}
+      val2 = minOutEdges[pos2] + (useD ? d[pos2] : 0);
+      
+      val1 = val1 < 0 ? INT_MAX : val1;
+      val2 = val2 < 0 ? INT_MAX : val2;
+      if(useD) {
+	val1 = U[pos1] ? val1 : INT_MAX;
+	val2 = U[pos2] ? val2 : INT_MAX;
       }
-      else if(U[pos1] && U[pos2]) {
-	if(val1 > val2 && val2 > 0) {
-	  outDel[globalThreadId] = val2;
-	}
-	else if(val1 > 0){
-	  outDel[globalThreadId] = val1;
-	}
-	else {
-	  outDel[globalThreadId] = INT_MAX;
-	}
+      
+      if(val1 < 0 || val2 < 0) {
+	printf("error in min\n");
+	printf("out1: %d, useD: %d, d: %d\n", minOutEdges[pos1], useD, d[pos1]);
+	printf("out2: %d, useD: %d, d: %d\n", minOutEdges[pos2], useD, d[pos2]);
       }
-      else if(U[pos1] && val1 > 0) {
+      if(val1 > val2) {
+	outDel[globalThreadId] = val2;	 
+      }
+      else{
 	outDel[globalThreadId] = val1;
-      }
-      else if(U[pos2] && val2 > 0) {
-	outDel[globalThreadId] = val2;
-      }
-      else {
-	outDel[globalThreadId] = INT_MAX;
       }
     }
     else {
-      if(outDel[globalThreadId] > 0 && minOutEdges[pos1] > 0) {
-	outDel[globalThreadId] = val1;
+      val1 = val1 < 0 ? INT_MAX : val1;
+      if(useD) {
+	val1 = U[pos1] ? val1 : INT_MAX;
       }
-      else {
-	outDel[globalThreadId] = INT_MAX;
-      }
+      outDel[globalThreadId] = val1;
     }
   }
 }

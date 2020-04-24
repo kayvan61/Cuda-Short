@@ -6,10 +6,10 @@ int assertEqArr(int* arr1, int* arr2, int size) {
   for(int i = 0; i < size; i++) {
     if(arr1[i] != arr2[i]) {
       printf("Node %d differs. GPU: %d, CPU: %d\n", i, arr1[i], arr2[i]);
-      return 0;
+      return i;
     }
   }
-  return 1;
+  return -1;
 }
 
 void printArr(int *arr, int size) {
@@ -23,7 +23,7 @@ int* genRandAdjMat(int size) {
   int* ret = (int*)malloc(size * size * sizeof(int));
   srand(12345);
   for(int i = 0; i < size * size; i++) {
-    ret[i] = rand()%256;
+    ret[i] = rand()%512;
   } 
 
   return ret;
@@ -46,7 +46,7 @@ void runFuncTests() {
   
   for(int i = 0; i < TEST_COUNT; i++) {
 
-    gSize = rand() % 8192 + 1;
+    gSize = rand() % 8196 + 1;
     adjMat = genRandAdjMat(gSize);
     
     shortestOut = (int*)malloc(sizeof(int) * gSize);
@@ -93,13 +93,19 @@ void runFuncTests() {
     }
 
     CPU_Dijkstra(CPUadjMat, 0, gSize, CPUshortestOut);
-
-    if (assertEqArr(shortestOut, CPUshortestOut, gSize)) {
+    int temp;
+    if ((temp = assertEqArr(shortestOut, CPUshortestOut, gSize)) == -1) {
       printf("Yay! Correct for random graph of size %d!\n", gSize);
     }
     else {
+      printf("GPU: ");
       printArr(shortestOut, 100);
+      printf("CPU: ");
+      printArr(CPUshortestOut, 100);
+      printf("adjMat0: ");
       printArr(adjMat, 100);
+      printf("adjMat%d: ", temp);
+      printArr(adjMat + (temp*gSize), 100);
       exit(-1);
     }
 
