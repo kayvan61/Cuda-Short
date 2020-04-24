@@ -32,12 +32,11 @@ __global__ void findAllMins(int* adjMat, int* outVec, int gSize) {
 }
 
 /*
- * if(F[tid]) 
- *   for all j that are successors of tid
- *     if(U[j])
- *       atomic_start
- *       d[j] = min(d[j], d[tid] + w[tid][j])
- *       atomic_end
+ * forall i in parallel do 
+ *   if (F[i]) 
+ *     forall j predecessor of i do
+ *       if (U[j])
+ *         c[i]= min(c[i],c[j]+w[j,i]);
  *
  */
 __global__ void relax(int* U, int* F, int* d, int gSize, int* adjMat) {
@@ -65,17 +64,11 @@ __global__ void min(int* U, int* d, int* outDel, int* minOutEdges, int gSize, in
     if(pos2 < gSize) {
       val2 = minOutEdges[pos2] + (useD ? d[pos2] : 0);
       
-      val1 = val1 < 0 ? INT_MAX : val1;
-      val2 = val2 < 0 ? INT_MAX : val2;
+      val1 = val1 <= 0 ? INT_MAX : val1;
+      val2 = val2 <= 0 ? INT_MAX : val2;
       if(useD) {
 	val1 = U[pos1] ? val1 : INT_MAX;
 	val2 = U[pos2] ? val2 : INT_MAX;
-      }
-      
-      if(val1 < 0 || val2 < 0) {
-	printf("error in min\n");
-	printf("out1: %d, useD: %d, d: %d\n", minOutEdges[pos1], useD, d[pos1]);
-	printf("out2: %d, useD: %d, d: %d\n", minOutEdges[pos2], useD, d[pos2]);
       }
       if(val1 > val2) {
 	outDel[globalThreadId] = val2;	 
@@ -85,7 +78,7 @@ __global__ void min(int* U, int* d, int* outDel, int* minOutEdges, int gSize, in
       }
     }
     else {
-      val1 = val1 < 0 ? INT_MAX : val1;
+      val1 = val1 <= 0 ? INT_MAX : val1;
       if(useD) {
 	val1 = U[pos1] ? val1 : INT_MAX;
       }
@@ -106,7 +99,7 @@ __global__ void update(int* U, int* F, int* d, int* del, int gSize) {
   
   if (globalThreadId < gSize) {
     F[globalThreadId] = 0;
-    if(U[globalThreadId] && d[globalThreadId] <= del[0]) {
+    if(U[globalThreadId] && d[globalThreadId] < del[0]) {
       U[globalThreadId] = 0;
       F[globalThreadId] = 1;
     }
@@ -167,12 +160,14 @@ void doShortest(int* adjMat, int* shortestOut, int gSize, int startingNode,
   cudaMalloc((void**) &_d_minTemp1 , sizeof(int) * gSize);
   
   init<<<numBlocks, BLOCK_SIZE>>>(_d_unvisited, _d_frontier, _d_estimates, startingNode, gSize);
+
   do {
     dFlag = 1;
     curSize = gSize;
     cudaMemcpy(_d_minTemp1,   _d_minOutEdge, sizeof(int) * gSize, cudaMemcpyDeviceToDevice);
-    
+
     relax<<<numBlocks, BLOCK_SIZE>>>(_d_unvisited, _d_frontier, _d_estimates, gSize, _d_adjMat);
+
     do {
       min<<<numBlocks, BLOCK_SIZE>>>(_d_unvisited, _d_estimates, _d_delta, _d_minTemp1, curSize, dFlag);
       _d_minTemp2 = _d_minTemp1;
@@ -186,15 +181,13 @@ void doShortest(int* adjMat, int* shortestOut, int gSize, int startingNode,
     _d_minTemp2 = _d_minTemp1;
     _d_minTemp1 = _d_delta;
     _d_delta    = _d_minTemp2;
-
     
     update<<<numBlocks, BLOCK_SIZE>>>(_d_unvisited, _d_frontier, _d_estimates, _d_delta, gSize);
     
     cudaMemcpy(&del, _d_delta, sizeof(int), cudaMemcpyDeviceToHost);
     
-    fflush(stdout);
   } while(del != INT_MAX);
-
+  
   cudaMemcpy(shortestOut, _d_estimates, sizeof(int) * gSize, cudaMemcpyDeviceToHost);
   
 #ifndef NO_PRINT

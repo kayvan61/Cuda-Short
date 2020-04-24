@@ -45,7 +45,6 @@ void runFuncTests() {
   int*  _d_minOutEdge;
   
   for(int i = 0; i < TEST_COUNT; i++) {
-
     gSize = rand() % 8196 + 1;
     adjMat = genRandAdjMat(gSize);
     
@@ -98,6 +97,8 @@ void runFuncTests() {
       printf("Yay! Correct for random graph of size %d!\n", gSize);
     }
     else {
+      printf("size: ");
+      printf("%d\n", gSize);
       printf("GPU: ");
       printArr(shortestOut, 100);
       printf("CPU: ");

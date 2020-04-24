@@ -10,11 +10,13 @@ demo: main.cu shortestKernels.cu
 timeTest: main.cu shortestKernels.cu CPU_short.hpp timingTests.hpp
 	$(GCC) $(CXX_FLAGS) $(TIMING_FLAGS) $< -o $@
 
-funcTests: main.cu shortestKernels.cu CPU_short.hpp funcTests.hpp
+funcTest: main.cu shortestKernels.cu CPU_short.hpp funcTests.hpp
 	$(GCC) $(CXX_FLAGS) $(FUNC_FLAGS) $< -o $@
 
 %.o: %.cpp
 	$(GCC) -c $< -o $@
 
 clean:
-	rm *.o graph
+	-rm funcTest
+	-rm demo
+	-rm timeTest
