@@ -18,6 +18,7 @@
 int* genTestAdjMat(int*);
 void runTimingTest();
 void runCPUTimingTest();
+int* read_input(const char* input);
 
 int main() {
 
@@ -25,18 +26,18 @@ int main() {
   runTimingTest();
   runCPUTimingTest();
   return 0;
-#endif 
+#endif
 
 #ifdef FUNC_TEST
   runFuncTests();
   return 0;
 #endif
-  
+
   int*  adjMat;
   int*  shortestOut;
   int   gSize;
   int   startingNode = 0;
-  
+
   int*  _d_adjMat;
   int*  _d_outVec;
   int*  _d_unvisited;
@@ -55,7 +56,7 @@ int main() {
   cudaMalloc((void**) &_d_estimates,  sizeof(int) * gSize);
   cudaMalloc((void**) &_d_minOutEdge, sizeof(int) * gSize);
   cudaMalloc((void**) &_d_delta,      sizeof(int) * gSize);
-  
+
   cudaMemcpy((void*)_d_adjMat, (void*)adjMat, sizeof(int) * gSize * gSize, cudaMemcpyHostToDevice);
   cudaMemset((void*)_d_outVec,             0, sizeof(int) * gSize);
   cudaMemset((void*)_d_unvisited,          0, sizeof(int) * gSize);
@@ -74,7 +75,7 @@ int main() {
 	      _d_estimates,
 	      _d_delta,
 	      _d_minOutEdge);
-  
+
   cudaFree(_d_adjMat);
   cudaFree(_d_outVec);
   cudaFree(_d_unvisited);
@@ -99,10 +100,32 @@ int* genTestAdjMat(int* gSize) {
       temp[i] = -1;
     }
   }
-  
+
   int* ret = (int*)malloc(49 * sizeof(int));
 
   memcpy(ret, temp, sizeof(int) * 49);
-  
+
   return ret;
+}
+
+int* read_input(const char* input) {
+    int arraySize = 0;
+    int num;
+    int index = 0;
+    FILE* inputF = fopen(input, "r");
+    while (fscanf(inputF, "%d, ", &num) != EOF) {
+        arraySize++;
+    }
+
+    int* in = (int*)malloc(arraySize * sizeof(int));
+    rewind(inputF);
+    while (fscanf(inputF, "%d, ", &in[index]) != EOF) {
+        index++;
+    }
+
+    for (int i = 0; i < arraySize; i++) {
+        printf("%d ", in[i]);
+    }
+
+    return in;
 }
