@@ -1,4 +1,4 @@
-#define TIMING_MAX_SIZE  100 * 1024
+#define TIMING_MAX_SIZE  512*2*2*2*2*2*2
 #define TIMING_STEP_SIZE 512
 
 int* genRandAdjMat(int size) {
