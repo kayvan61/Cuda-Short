@@ -19,8 +19,9 @@ int* genTestAdjMat(int*);
 void runTimingTest();
 void runCPUTimingTest();
 int* read_input(const char* input);
+int   gSize;
 
-int main() {
+int main(int argc, char **argv) {
 
 #ifdef TIMING
   runTimingTest();
@@ -32,10 +33,9 @@ int main() {
   runFuncTests();
   return 0;
 #endif
-
+#ifdef DEMO
   int*  adjMat;
   int*  shortestOut;
-  int   gSize;
   int   startingNode = 0;
 
   int*  _d_adjMat;
@@ -45,10 +45,13 @@ int main() {
   int*  _d_estimates;
   int*  _d_delta;
   int*  _d_minOutEdge;
-
-  adjMat      = genTestAdjMat(&gSize);
+  if(argc == 2){
+    adjMat      = read_input(argv[1]);
+  } else {
+    adjMat      = genTestAdjMat(&gSize);
+  }
   shortestOut = (int*)malloc(sizeof(int) * gSize);
-
+  
   cudaMalloc((void**) &_d_adjMat,     sizeof(int) * gSize * gSize);
   cudaMalloc((void**) &_d_outVec,     sizeof(int) * gSize);
   cudaMalloc((void**) &_d_unvisited,  sizeof(int) * gSize);
@@ -86,6 +89,8 @@ int main() {
 
   free(adjMat);
   free(shortestOut);
+  return 0;
+#endif
 }
 
 int* genTestAdjMat(int* gSize) {
@@ -116,7 +121,7 @@ int* read_input(const char* input) {
     while (fscanf(inputF, "%d, ", &num) != EOF) {
         arraySize++;
     }
-
+	gSize = arraySize;
     int* in = (int*)malloc(arraySize * sizeof(int));
     rewind(inputF);
     while (fscanf(inputF, "%d, ", &in[index]) != EOF) {
