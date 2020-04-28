@@ -21,6 +21,13 @@ To run a demo with an adjacency matrix from a file:
 2. `make demo`
 3. `./demo <fileName>`
 
+# Brief Results
+
+![GPU vs CPU time](/src/cuda_short_timing_graphs/gpu_w_mm_vs_cpu_aggregate.png)
+Format: ![Alt Text](url)
+
+This shows the time taken on the GPU vs the CPU algo as we vary the graph size. This includes initializing the GPU and copying data from host to device and back again.
+
 # Adjacency Matrix File Format
 
 The program assumes adjacency matricies will be in the format where `n` is the number of nodes, and `s` is the source node.
