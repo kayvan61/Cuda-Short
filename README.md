@@ -23,7 +23,7 @@ To run a demo with an adjacency matrix from a file:
 
 # Brief Results
 
-![GPU vs CPU time](/src/cuda_short_timing_graphs/gpu_w_mm_vs_cpu_aggregate.png)
+![GPU vs CPU time](/cuda_short_timing_graphs/gpu_w_mm_vs_cpu_aggregate.png)
 
 This shows the time taken on the GPU vs the CPU algo as we vary the graph size. This includes initializing the GPU and copying data from host to device and back again.
 
