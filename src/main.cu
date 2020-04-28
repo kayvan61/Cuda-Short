@@ -129,12 +129,14 @@ int* read_input(const char* input, int* gSize, int* srcNode) {
         index++;
     }
 
+#ifndef NO_PRINT
     for(int i = 0; i < *gSize; i++) {
       for(int j = 0; j < *gSize; j++) {
 	printf("%d ", in[i* (*gSize) + j]);
       }
       printf("\n");
     }
-
+#endif
+    
     return in;
 }
