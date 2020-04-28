@@ -3,7 +3,7 @@ GCC=nvcc
 CXX_FLAGS=-arch compute_60
 TIMING_FLAGS=-D TIMING -D NO_PRINT
 FUNC_FLAGS=-D FUNC_TEST -D NO_PRINT 
-DEMO_FLAGS=-D DEMO -D NO_PRINT
+DEMO_FLAGS=-D DEMO
 
 demo: main.cu shortestKernels.cu
 	$(GCC) $(CXX_FLAGS) $(DEMO_FLAGS) $< -o $@

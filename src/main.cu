@@ -3,6 +3,7 @@
 #include <sys/time.h>
 #include <curand.h>
 #include <curand_kernel.h>
+#include <cmath>
 #include "shortestKernels.cu"
 #ifdef TIMING
 #include "CPU_short.hpp"
@@ -18,8 +19,7 @@
 int* genTestAdjMat(int*);
 void runTimingTest();
 void runCPUTimingTest();
-int* read_input(const char* input);
-int   gSize;
+int* read_input(const char* input, int*, int*);
 
 int main(int argc, char **argv) {
 
@@ -34,6 +34,9 @@ int main(int argc, char **argv) {
   return 0;
 #endif
 #ifdef DEMO
+
+  int   gSize;
+  
   int*  adjMat;
   int*  shortestOut;
   int   startingNode = 0;
@@ -46,7 +49,7 @@ int main(int argc, char **argv) {
   int*  _d_delta;
   int*  _d_minOutEdge;
   if(argc == 2){
-    adjMat      = read_input(argv[1]);
+    adjMat      = read_input(argv[1], &gSize, &startingNode);
   } else {
     adjMat      = genTestAdjMat(&gSize);
   }
@@ -113,23 +116,24 @@ int* genTestAdjMat(int* gSize) {
   return ret;
 }
 
-int* read_input(const char* input) {
-    int arraySize = 0;
-    int num;
+int* read_input(const char* input, int* gSize, int* srcNode) {
     int index = 0;
     FILE* inputF = fopen(input, "r");
-    while (fscanf(inputF, "%d, ", &num) != EOF) {
-        arraySize++;
-    }
-	gSize = arraySize;
-    int* in = (int*)malloc(arraySize * sizeof(int));
-    rewind(inputF);
+    
+    fscanf(inputF, "%d", gSize);
+    fscanf(inputF, "%d", srcNode);
+    
+    int* in = (int*)malloc((*gSize) * (*gSize) * sizeof(int));
+    
     while (fscanf(inputF, "%d, ", &in[index]) != EOF) {
         index++;
     }
 
-    for (int i = 0; i < arraySize; i++) {
-        printf("%d ", in[i]);
+    for(int i = 0; i < *gSize; i++) {
+      for(int j = 0; j < *gSize; j++) {
+	printf("%d ", in[i* (*gSize) + j]);
+      }
+      printf("\n");
     }
 
     return in;
