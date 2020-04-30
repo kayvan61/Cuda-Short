@@ -1,5 +1,7 @@
-#define TIMING_MAX_SIZE  512*2*2*2*2*2*2
-#define TIMING_STEP_SIZE 512
+#include <stdint.h>
+
+#define TIMING_MAX_SIZE  70001
+#define TIMING_STEP_SIZE 70000
 
 int* genRandAdjMat(int size) {
   int* ret = (int*)malloc(size * size * sizeof(int));
@@ -22,7 +24,7 @@ void runTimingTest() {
   srand(1500);
   int*  adjMat;
   int*  shortestOut;
-  int   gSize = TIMING_MAX_SIZE;
+  size_t   gSize = TIMING_MAX_SIZE;
   int   startingNode = 0;
   
   int*  _d_adjMat;
@@ -45,13 +47,14 @@ void runTimingTest() {
     handlerError(cudaEventCreate(&mem_stop));
     handlerError(cudaEventRecord(mem_start, 0));
 
-    cudaMalloc((void**) &_d_adjMat,     sizeof(int) * gSize * gSize);
-    cudaMalloc((void**) &_d_outVec,     sizeof(int) * gSize);
-    cudaMalloc((void**) &_d_unvisited,  sizeof(int) * gSize);
-    cudaMalloc((void**) &_d_frontier,   sizeof(int) * gSize);
-    cudaMalloc((void**) &_d_estimates,  sizeof(int) * gSize);
-    cudaMalloc((void**) &_d_minOutEdge, sizeof(int) * gSize);
-    cudaMalloc((void**) &_d_delta,      sizeof(int) * gSize);
+    printf("%lu\n", sizeof(int) * gSize * gSize);
+    handlerError(cudaMalloc((void**) &_d_adjMat,     sizeof(int) * gSize * gSize));
+    handlerError(cudaMalloc((void**) &_d_outVec,     sizeof(int) * gSize));
+    handlerError(cudaMalloc((void**) &_d_unvisited,  sizeof(int) * gSize));
+    handlerError(cudaMalloc((void**) &_d_frontier,   sizeof(int) * gSize));
+    handlerError(cudaMalloc((void**) &_d_estimates,  sizeof(int) * gSize));
+    handlerError(cudaMalloc((void**) &_d_minOutEdge, sizeof(int) * gSize));
+    handlerError(cudaMalloc((void**) &_d_delta,      sizeof(int) * gSize));
 
     cudaMemcpy((void*)_d_adjMat, (void*)adjMat, sizeof(int) * gSize * gSize, cudaMemcpyHostToDevice);
     cudaMemset((void*)_d_outVec,             0, sizeof(int) * gSize);
@@ -85,13 +88,13 @@ void runTimingTest() {
     handlerError(cudaEventElapsedTime(&gpu_time, start, stop));    
     
     free(shortestOut);
-    cudaFree(_d_adjMat);
-    cudaFree(_d_outVec);
-    cudaFree(_d_unvisited);
-    cudaFree(_d_frontier);
-    cudaFree(_d_estimates);
-    cudaFree(_d_minOutEdge);
-    cudaFree(_d_delta);
+    handlerError(cudaFree(_d_adjMat));
+    handlerError(cudaFree(_d_outVec));
+    handlerError(cudaFree(_d_unvisited));
+    handlerError(cudaFree(_d_frontier));
+    handlerError(cudaFree(_d_estimates));
+    handlerError(cudaFree(_d_minOutEdge));
+    handlerError(cudaFree(_d_delta));
 
     handlerError(cudaDeviceSynchronize());
     handlerError(cudaEventRecord(mem_stop, 0));

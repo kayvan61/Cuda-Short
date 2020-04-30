@@ -16,7 +16,7 @@
  */
 
 // find min edge out
-__global__ void findAllMins(int* adjMat, int* outVec, int gSize) {
+__global__ void findAllMins(int* adjMat, int* outVec, size_t gSize) {
   int globalThreadId = blockIdx.x * blockDim.x + threadIdx.x;
   int ind = globalThreadId * gSize;
   int min = INT_MAX;
@@ -39,7 +39,7 @@ __global__ void findAllMins(int* adjMat, int* outVec, int gSize) {
  *         c[i]= min(c[i],c[j]+w[j,i]);
  *
  */
-__global__ void relax(int* U, int* F, int* d, int gSize, int* adjMat) {
+__global__ void relax(int* U, int* F, int* d, size_t gSize, int* adjMat) {
   int globalThreadId = blockIdx.x * blockDim.x + threadIdx.x;
 
   if (globalThreadId < gSize) {
@@ -53,7 +53,7 @@ __global__ void relax(int* U, int* F, int* d, int gSize, int* adjMat) {
   }
 }
 
-__global__ void min(int* U, int* d, int* outDel, int* minOutEdges, int gSize, int useD) {
+__global__ void min(int* U, int* d, int* outDel, int* minOutEdges, size_t gSize, int useD) {
   int globalThreadId = blockIdx.x * blockDim.x + threadIdx.x;
   
   int pos1 = 2*globalThreadId;
@@ -94,7 +94,7 @@ __global__ void min(int* U, int* d, int* outDel, int* minOutEdges, int gSize, in
  *   F[tid] = true
  *
  */
-__global__ void update(int* U, int* F, int* d, int* del, int gSize) {
+__global__ void update(int* U, int* F, int* d, int* del, size_t gSize) {
   int globalThreadId = blockIdx.x * blockDim.x + threadIdx.x;
   
   if (globalThreadId < gSize) {
@@ -111,7 +111,7 @@ __global__ void update(int* U, int* F, int* d, int* del, int gSize) {
  * F[tid] = false
  * d[tid] = -1
  */
-__global__ void init(int* U, int* F, int* d, int startNode, int gSize) {
+__global__ void init(int* U, int* F, int* d, int startNode, size_t gSize) {
   int globalThreadId = blockIdx.x * blockDim.x + threadIdx.x;
 
   if (globalThreadId < gSize) {
@@ -127,7 +127,7 @@ __global__ void init(int* U, int* F, int* d, int startNode, int gSize) {
   }
 }
 
-void doShortest(int* adjMat, int* shortestOut, int gSize, int startingNode,
+void doShortest(int* adjMat, int* shortestOut, size_t gSize, int startingNode,
 		int*  _d_adjMat,
 		int*  _d_outVec,
 		int*  _d_unvisited,
