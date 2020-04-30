@@ -167,4 +167,6 @@ void write_output (const char* fileName, const int* const outArr, int outArrSize
   for(int i = 0; i < outArrSize; i++) {
     fprintf(file, " length from %d to %d is %d\n", srcNde, i, outArr[i]);
   }
+
+  fclose(file);
 }
