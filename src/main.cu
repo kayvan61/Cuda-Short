@@ -20,6 +20,7 @@ int* genTestAdjMat(int*);
 void runTimingTest();
 void runCPUTimingTest();
 int* read_input(const char* input, int*, int*);
+void write_output (FILE* file, const int* const outArr, int outArrSize);
 
 int main(int argc, char **argv) {
 
@@ -36,7 +37,7 @@ int main(int argc, char **argv) {
 #ifdef DEMO
 
   int   gSize;
-  
+
   int*  adjMat;
   int*  shortestOut;
   int   startingNode = 0;
@@ -54,7 +55,7 @@ int main(int argc, char **argv) {
     adjMat      = genTestAdjMat(&gSize);
   }
   shortestOut = (int*)malloc(sizeof(int) * gSize);
-  
+
   cudaMalloc((void**) &_d_adjMat,     sizeof(int) * gSize * gSize);
   cudaMalloc((void**) &_d_outVec,     sizeof(int) * gSize);
   cudaMalloc((void**) &_d_unvisited,  sizeof(int) * gSize);
@@ -119,12 +120,12 @@ int* genTestAdjMat(int* gSize) {
 int* read_input(const char* input, int* gSize, int* srcNode) {
     int index = 0;
     FILE* inputF = fopen(input, "r");
-    
+
     fscanf(inputF, "%d", gSize);
     fscanf(inputF, "%d", srcNode);
-    
+
     int* in = (int*)malloc((*gSize) * (*gSize) * sizeof(int));
-    
+
     while (fscanf(inputF, "%d, ", &in[index]) != EOF) {
         index++;
     }
@@ -137,6 +138,13 @@ int* read_input(const char* input, int* gSize, int* srcNode) {
       printf("\n");
     }
 #endif
-    
+
     return in;
+}
+
+void write_output (FILE* file, const int* const outArr, int outArrSize) {
+	for(int i = 0; i < outArrSize - 1; i++) {
+		fprintf(file, "%d, ", outArr[i]);
+	}
+	fprintf(file, "%d", outArr[outArrSize-1]);
 }
