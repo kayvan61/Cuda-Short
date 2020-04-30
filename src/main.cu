@@ -20,7 +20,7 @@ int* genTestAdjMat(int*);
 void runTimingTest();
 void runCPUTimingTest();
 int* read_input(const char* input, int*, int*);
-void write_output (FILE* file, const int* const outArr, int outArrSize);
+void write_output (const char*, const int* const outArr, int outArrSize, int);
 
 int main(int argc, char **argv) {
 
@@ -91,8 +91,26 @@ int main(int argc, char **argv) {
   cudaFree(_d_minOutEdge);
   cudaFree(_d_delta);
 
+  if(argc == 2){
+    char outFileName[strlen(argv[1]) + 5];
+    memcpy(outFileName, argv[1], sizeof(char) * strlen(argv[1]));
+    outFileName[strlen(argv[1])] = '.';
+    outFileName[strlen(argv[1])+1] = 'o';
+    outFileName[strlen(argv[1])+2] = 'u';
+    outFileName[strlen(argv[1])+3] = 't';
+    outFileName[strlen(argv[1])+4] = '\0';
+
+    printf("writing results to %s...\n", outFileName);
+
+    write_output (outFileName, shortestOut, gSize, startingNode);
+  }
+  else {
+    printf("writing results to demo.out...\n");
+    write_output ("demo.out", shortestOut, gSize, startingNode);
+  }
+  
   free(adjMat);
-  free(shortestOut);
+  free(shortestOut); 
   return 0;
 #endif
 }
@@ -104,11 +122,6 @@ int* genTestAdjMat(int* gSize) {
 		  0, 0, 0, 0, 4,
 		  0, 3, 9, 0, 2,
 		  7, 0, 6, 0, 0};
-  for(int i = 0; i < 49; i++) {
-    if(temp[i] == 0) {
-      temp[i] = -1;
-    }
-  }
 
   int* ret = (int*)malloc(49 * sizeof(int));
 
@@ -123,6 +136,9 @@ int* read_input(const char* input, int* gSize, int* srcNode) {
 
     fscanf(inputF, "%d", gSize);
     fscanf(inputF, "%d", srcNode);
+
+    printf("graph Size: %d\n", *gSize);
+    printf("source Node: %d\n", *srcNode);
 
     int* in = (int*)malloc((*gSize) * (*gSize) * sizeof(int));
 
@@ -139,12 +155,16 @@ int* read_input(const char* input, int* gSize, int* srcNode) {
     }
 #endif
 
+    fclose(inputF);
+
     return in;
 }
 
-void write_output (FILE* file, const int* const outArr, int outArrSize) {
-	for(int i = 0; i < outArrSize - 1; i++) {
-		fprintf(file, "%d, ", outArr[i]);
-	}
-	fprintf(file, "%d", outArr[outArrSize-1]);
+void write_output (const char* fileName, const int* const outArr, int outArrSize, int srcNde) {
+
+  FILE* file = fopen(fileName, "w+");
+  
+  for(int i = 0; i < outArrSize; i++) {
+    fprintf(file, " length from %d to %d is %d\n", srcNde, i, outArr[i]);
+  }
 }
